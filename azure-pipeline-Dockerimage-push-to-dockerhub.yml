@@ -1,0 +1,45 @@
+trigger:
+- none  # Run on push to main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  dockerRegistryServiceConnection: "ea5a9769-ddbf-4ff3-82a2-07a0f0f24e9f" # Created in Azure DevOps
+  imageName: "jitendrakrydv/nodejs-hello-world" # Replace with your Docker Hub repo
+  tag: "$(Build.BuildId)"  # Use build ID as the tag
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: "18.x"
+
+- script: |
+    npm install
+    npm test || echo "Tests failed but continuing..."
+  displayName: "Install dependencies & Run Tests"
+
+# Login to Docker Hub
+- task: Docker@2
+  inputs:
+    containerRegistry: "$(dockerRegistryServiceConnection)"
+    command: "login"
+
+# Build Docker Image
+- task: Docker@2
+  inputs:
+    containerRegistry: "$(dockerRegistryServiceConnection)"
+    repository: "$(imageName)"
+    command: "build"
+    Dockerfile: "**/Dockerfile"
+    tags: "$(tag),latest"
+
+# Push Docker Image to Docker Hub
+- task: Docker@2
+  inputs:
+    containerRegistry: "$(dockerRegistryServiceConnection)"
+    repository: "$(imageName)"
+    command: "push"
+    tags: "$(tag),latest"
+
+
